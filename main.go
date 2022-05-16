@@ -1,9 +1,12 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"github.com/PuerkitoBio/goquery"
 	"log"
+	"main.go/db"
+
 	"net/http"
 	"strconv"
 	"strings"
@@ -22,10 +25,27 @@ type MeetingTime struct {
 	endTime   Time
 }
 
+type MeetingTimeExport struct {
+	Monday    bool       `json:"Monday"`
+	Tuesday   bool       `json:"Tuesday"`
+	Wednesday bool       `json:"Wednesday"`
+	Thursday  bool       `json:"Thursday"`
+	Friday    bool       `json:"Friday"`
+	Saturday  bool       `json:"Saturday"`
+	Sunday    bool       `json:"Sunday"`
+	StartTime TimeExport `json:"StartTime"`
+	EndTime   TimeExport `json:"EndTime"`
+}
+
 // 24-hour format
 type Time struct {
 	hour   int
 	minute int
+}
+
+type TimeExport struct {
+	Hour   int `json:"Hour"`
+	Minute int `json:"Minute"`
 }
 
 type DateRange struct {
@@ -33,6 +53,13 @@ type DateRange struct {
 	startDay   int
 	endMonth   int
 	endDay     int
+}
+
+type DateRangeExport struct {
+	StartMonth int `json:"StartMonth"`
+	StartDay   int `json:"StartDay"`
+	EndMonth   int `json:"EndMonth"`
+	EndDay     int `json:"EndDay"`
 }
 
 type Class struct {
@@ -44,6 +71,17 @@ type Class struct {
 	online           bool
 	meetingTimes     []MeetingTime
 	date             DateRange
+}
+
+type ClassExport struct {
+	CourseName       string              `json:"courseName"`
+	Crn              string              `json:"crn"`
+	Instructor       string              `json:"instructor"`
+	InstructorRating float32             `json:"instructorRating"`
+	Open             bool                `json:"open"`
+	Online           bool                `json:"online"`
+	MeetingTimes     []MeetingTimeExport `json:"meetingTimes"`
+	Date             DateRangeExport     `json:"date"`
 }
 
 var globalMeetingIndex int = 0
@@ -122,6 +160,8 @@ func main() {
 	})
 
 	analyzeArray(classes)
+
+	saveToMongo(classes)
 }
 
 func analyzeLine(line string, courseName string, class *Class) bool {
@@ -335,6 +375,60 @@ func analyzeArray(classes []Class) {
 			fmt.Println("Meeting time: " + strconv.Itoa(classes[i].meetingTimes[x].startTime.hour) + ":" + strconv.Itoa(classes[i].meetingTimes[x].startTime.minute) + " - " + strconv.Itoa(classes[i].meetingTimes[x].endTime.hour) + ":" + strconv.Itoa(classes[i].meetingTimes[x].endTime.minute))
 		}
 		fmt.Println("----------------------")
+	}
+}
+
+func saveToMongo(classes []Class) {
+	collection, err := db.GetDBCollection()
+
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	for i := 0; i < len(classes); i++ {
+		count := 0
+
+		for x := 0; x < len(classes[i].meetingTimes); x++ {
+			if classes[i].meetingTimes[x].endTime.hour != 0 {
+				count++
+			}
+		}
+
+		// there is times
+		if count > 0 {
+			meetingTimeExport := make([]MeetingTimeExport, count)
+
+			for x := 0; x < count; x++ {
+				meetingTimeExport[x].Monday = classes[i].meetingTimes[x].monday
+				meetingTimeExport[x].Tuesday = classes[i].meetingTimes[x].tuesday
+				meetingTimeExport[x].Wednesday = classes[i].meetingTimes[x].wednesday
+				meetingTimeExport[x].Thursday = classes[i].meetingTimes[x].thursday
+				meetingTimeExport[x].Friday = classes[i].meetingTimes[x].friday
+				meetingTimeExport[x].Saturday = classes[i].meetingTimes[x].saturday
+				meetingTimeExport[x].Sunday = classes[i].meetingTimes[x].sunday
+
+				meetingTimeExport[x].StartTime.Hour = classes[i].meetingTimes[x].startTime.hour
+				meetingTimeExport[x].StartTime.Minute = classes[i].meetingTimes[x].startTime.minute
+
+				meetingTimeExport[x].EndTime.Hour = classes[i].meetingTimes[x].endTime.hour
+				meetingTimeExport[x].EndTime.Minute = classes[i].meetingTimes[x].endTime.minute
+			}
+
+			newClass := ClassExport{classes[i].courseName, classes[i].crn, classes[i].instructor,
+				classes[i].instructorRating, classes[i].open, classes[i].online, meetingTimeExport, DateRangeExport{classes[i].date.startMonth, classes[i].date.startDay, classes[i].date.endMonth, classes[i].date.endDay}}
+			_, err := collection.InsertOne(context.TODO(), newClass)
+			if err != nil {
+				fmt.Println(err)
+			}
+		} else { // no meeting times
+			newClass := ClassExport{classes[i].courseName, classes[i].crn, classes[i].instructor,
+				classes[i].instructorRating, classes[i].open, classes[i].online, nil, DateRangeExport{classes[i].date.startMonth, classes[i].date.startDay, classes[i].date.endMonth, classes[i].date.endDay}}
+			_, err := collection.InsertOne(context.TODO(), newClass)
+			if err != nil {
+				fmt.Println(err)
+			}
+		}
 	}
 }
 
