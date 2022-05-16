@@ -11,42 +11,43 @@ import (
 )
 
 type MeetingTime struct {
-	monday bool
-	tuesday bool
+	monday    bool
+	tuesday   bool
 	wednesday bool
-	thursday bool
-	friday bool
-	saturday bool
-	sunday bool
+	thursday  bool
+	friday    bool
+	saturday  bool
+	sunday    bool
 	startTime Time
-	endTime Time
+	endTime   Time
 }
 
 // 24-hour format
 type Time struct {
-	hour int
+	hour   int
 	minute int
 }
 
 type DateRange struct {
 	startMonth int
-	startDay int
-	endMonth int
-	endDay int
+	startDay   int
+	endMonth   int
+	endDay     int
 }
 
 type Class struct {
-	courseName string
-	crn string
-	instructor string
+	courseName       string
+	crn              string
+	instructor       string
 	instructorRating float32
-	open bool
-	online bool
-	meetingTimes[] MeetingTime
-	date DateRange
+	open             bool
+	online           bool
+	meetingTimes     []MeetingTime
+	date             DateRange
 }
 
 var globalMeetingIndex int = 0
+var globalOpenVar bool = false
 
 func main() {
 	classes := make([]Class, 1103)
@@ -82,7 +83,6 @@ func main() {
 			courseName = courseNameArr[0] + " " + courseNameArr[1]
 			fmt.Println("\n" + courseName)
 		}
-
 
 		item.Find(".default1").Each(func(i int, item2 *goquery.Selection) {
 			it := strings.TrimSpace(item2.Text())
@@ -131,9 +131,11 @@ func analyzeLine(line string, courseName string, class *Class) bool {
 	// Check if we are at the beggining of a CLASS
 	if strings.Contains(line, "open") || strings.Contains(line, "closed") || strings.Contains(line, "restricted") ||
 		strings.Contains(line, "see instructor") || strings.Contains(line, "waitlisted") || strings.Contains(line, "permission of dean") ||
-		strings.Contains(line, "audition required"){ // missing one case, idk dont want to look thru all the classes
+		strings.Contains(line, "audition required") { // missing one case, idk dont want to look thru all the classes
 		if strings.Contains(line, "open") {
-			class.open = true
+			globalOpenVar = true
+		} else {
+			globalOpenVar = false
 		}
 		return true
 	}
@@ -141,6 +143,7 @@ func analyzeLine(line string, courseName string, class *Class) bool {
 	// course name
 	if strings.TrimSpace(class.courseName) == "" {
 		class.courseName = courseName
+		class.open = globalOpenVar
 	}
 
 	// crn
@@ -183,7 +186,6 @@ func analyzeLine(line string, courseName string, class *Class) bool {
 		return false
 	}
 
-
 	// Meeting TIMES : - :
 	if strings.Contains(line, ":") && strings.Contains(line, "-") {
 		// parse time
@@ -215,7 +217,7 @@ func analyzeLine(line string, courseName string, class *Class) bool {
 				fmt.Println(err4)
 			}
 
-			if isPMStart && startHour != 12{
+			if isPMStart && startHour != 12 {
 				startHour += 12
 			}
 
@@ -232,7 +234,6 @@ func analyzeLine(line string, courseName string, class *Class) bool {
 
 		return false
 	}
-
 
 	// Meeting DAYS
 	if len(line) <= 2 {
@@ -251,21 +252,21 @@ func analyzeLine(line string, courseName string, class *Class) bool {
 				}
 
 				switch line {
-					case "m":
-						// monday
-						class.meetingTimes[globalMeetingIndex].monday = true
-					case "t":
-						class.meetingTimes[globalMeetingIndex].tuesday = true
-					case "w":
-						class.meetingTimes[globalMeetingIndex].wednesday = true
-					case "th":
-						class.meetingTimes[globalMeetingIndex].thursday = true
-					case "f":
-						class.meetingTimes[globalMeetingIndex].friday = true
-					case "s":
-						class.meetingTimes[globalMeetingIndex].saturday = true
-					case "su":
-						class.meetingTimes[globalMeetingIndex].sunday = true
+				case "m":
+					// monday
+					class.meetingTimes[globalMeetingIndex].monday = true
+				case "t":
+					class.meetingTimes[globalMeetingIndex].tuesday = true
+				case "w":
+					class.meetingTimes[globalMeetingIndex].wednesday = true
+				case "th":
+					class.meetingTimes[globalMeetingIndex].thursday = true
+				case "f":
+					class.meetingTimes[globalMeetingIndex].friday = true
+				case "s":
+					class.meetingTimes[globalMeetingIndex].saturday = true
+				case "su":
+					class.meetingTimes[globalMeetingIndex].sunday = true
 				}
 			}
 
@@ -302,7 +303,7 @@ func analyzeLine(line string, courseName string, class *Class) bool {
 
 func IsLetter(s string) bool {
 	for _, r := range s {
-		if !unicode.IsLetter(r) && r != ' ' && r != '-' && r != '\'' && r != '.' && r != 'I'{
+		if !unicode.IsLetter(r) && r != ' ' && r != '-' && r != '\'' && r != '.' && r != 'I' {
 			return false
 		}
 	}
@@ -316,13 +317,14 @@ func analyzeArray(classes []Class) {
 		fmt.Println(classes[i].crn)
 		fmt.Println(classes[i].instructor)
 		fmt.Println(classes[i].online)
+		fmt.Println(classes[i].open)
 		fmt.Println(classes[i].date.startMonth)
 		fmt.Println(classes[i].date.startDay)
 		fmt.Println(classes[i].date.endMonth)
 		fmt.Println(classes[i].date.endDay)
 
 		for x := 0; x < len(classes[i].meetingTimes); x++ {
-			fmt.Println("Day: " + strconv.Itoa(x + 1))
+			fmt.Println("Day: " + strconv.Itoa(x+1))
 			fmt.Println(classes[i].meetingTimes[x].monday)
 			fmt.Println(classes[i].meetingTimes[x].tuesday)
 			fmt.Println(classes[i].meetingTimes[x].wednesday)
@@ -330,7 +332,7 @@ func analyzeArray(classes []Class) {
 			fmt.Println(classes[i].meetingTimes[x].friday)
 			fmt.Println(classes[i].meetingTimes[x].saturday)
 			fmt.Println(classes[i].meetingTimes[x].sunday)
-			fmt.Println("Meeting time: " + strconv.Itoa(classes[i].meetingTimes[x].startTime.hour) + ":" + strconv.Itoa(classes[i].meetingTimes[x].startTime.minute) + " - " + strconv.Itoa(classes[i].meetingTimes[x].endTime.hour) + ":" + strconv.Itoa(classes[i].meetingTimes[x].endTime.minute));
+			fmt.Println("Meeting time: " + strconv.Itoa(classes[i].meetingTimes[x].startTime.hour) + ":" + strconv.Itoa(classes[i].meetingTimes[x].startTime.minute) + " - " + strconv.Itoa(classes[i].meetingTimes[x].endTime.hour) + ":" + strconv.Itoa(classes[i].meetingTimes[x].endTime.minute))
 		}
 		fmt.Println("----------------------")
 	}
@@ -340,4 +342,4 @@ func analyzeArray(classes []Class) {
 - last crn is not showing up
  - one instructor not being read 1102/1103 intructors
  - last course not showing up
- */
+*/
