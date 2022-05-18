@@ -1,0 +1,10 @@
+{
+	"compilerOptions": {
+		"esModuleInterop": true,
+		"module": "es2022",
+		"target": "ES2017",
+		"moduleResolution": "node",
+		"allowSyntheticDefaultImports": true,
+		"strict": true
+	}
+}
