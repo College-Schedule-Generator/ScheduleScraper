@@ -88,7 +88,7 @@ var globalMeetingIndex int = 0
 var globalOpenVar bool = false
 
 func main() {
-	classes := make([]Class, 1103)
+	classes := make([]Class, 1106) // 1106 is the amount of classes
 	classesIndex := 0
 	currentClass := Class{}
 
