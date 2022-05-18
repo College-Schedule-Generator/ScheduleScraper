@@ -1,4 +1,4 @@
-module main.go
+module github.com/Legitzx/ScheduleScraper
 
 go 1.18
 
@@ -8,6 +8,8 @@ require (
 )
 
 require (
+	github.com/alexflint/go-arg v1.4.3 // indirect
+	github.com/alexflint/go-scalar v1.1.0 // indirect
 	github.com/andybalholm/cascadia v1.3.1 // indirect
 	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/golang/snappy v0.0.1 // indirect
