@@ -86,7 +86,7 @@ type ClassExport struct {
 
 type SchoolExport struct {
 	Timestamp int64         `json:"timestamp"`
-	School    string        `json:"school"`
+	SchoolId  string        `json:"schoolId"`
 	Classes   []ClassExport `json:"classes"`
 }
 

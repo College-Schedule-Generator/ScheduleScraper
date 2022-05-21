@@ -53,7 +53,7 @@ type ProfessorType struct {
 
 type ProfessorExport struct {
 	Timestamp  int64           `json:"timestamp"`
-	School     string          `json:"schoolId"`
+	SchoolId   string          `json:"schoolId"`
 	Professors []ProfessorType `json:"professors"`
 }
 

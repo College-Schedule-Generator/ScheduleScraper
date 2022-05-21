@@ -35,7 +35,7 @@ func main() {
 				return
 			}
 
-			professorExport := rmp.ProfessorExport{Timestamp: time.Now().Unix(), School: strconv.Itoa(id), Professors: professors}
+			professorExport := rmp.ProfessorExport{Timestamp: time.Now().Unix(), SchoolId: strconv.Itoa(id), Professors: professors}
 
 			_, err = collection.InsertOne(context.TODO(), professorExport)
 			if err != nil {
