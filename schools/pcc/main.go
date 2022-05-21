@@ -64,29 +64,27 @@ type DateRangeExport struct {
 }
 
 type Class struct {
-	courseName       string
-	crn              string
-	instructor       string
-	instructorRating float32
-	open             bool
-	online           bool
-	meetingTimes     []MeetingTime
-	date             DateRange
+	courseName          string
+	classID             string
+	instructor          string
+	availability        string
+	instructionalMethod string
+	meetingTimes        []MeetingTime
+	date                DateRange
 }
 
 type ClassExport struct {
-	CourseName       string              `json:"courseName"`
-	Crn              string              `json:"crn"`
-	Instructor       string              `json:"instructor"`
-	InstructorRating float32             `json:"instructorRating"`
-	Open             bool                `json:"open"`
-	Online           bool                `json:"online"`
-	MeetingTimes     []MeetingTimeExport `json:"meetingTimes"`
-	Date             DateRangeExport     `json:"date"`
+	CourseName          string              `json:"courseName"`
+	ClassID             string              `json:"classID"`
+	Instructor          string              `json:"instructor"`
+	Availability        string              `json:"availability"`
+	InstructionalMethod string              `json:"instructionalMethod"`
+	MeetingTimes        []MeetingTimeExport `json:"meetingTimes"`
+	Date                DateRangeExport     `json:"date"`
 }
 
 var globalMeetingIndex int = 0
-var globalOpenVar bool = false
+var globalOpenVar string = ""
 
 func Run() {
 	classes := make([]Class, 1106) // 1106 is the amount of classes
@@ -160,7 +158,7 @@ func Run() {
 		}
 	})
 
-	analyzeArray(classes)
+	//analyzeArray(classes)
 
 	saveToMongo(classes)
 }
@@ -173,34 +171,45 @@ func analyzeLine(line string, courseName string, class *Class) bool {
 	if strings.Contains(line, "open") || strings.Contains(line, "closed") || strings.Contains(line, "restricted") ||
 		strings.Contains(line, "see instructor") || strings.Contains(line, "waitlisted") || strings.Contains(line, "permission of dean") ||
 		strings.Contains(line, "audition required") { // missing one case, idk dont want to look thru all the classes
-		if strings.Contains(line, "open") {
-			globalOpenVar = true
-		} else {
-			globalOpenVar = false
-		}
+		globalOpenVar = line
 		return true
 	}
 
-	// course name
-	if strings.TrimSpace(class.courseName) == "" {
-		class.courseName = courseName
-		class.open = globalOpenVar
+	// instructional method
+	switch line {
+	case "l":
+		class.instructionalMethod = "IP"
+		return false
+	case "ll":
+		class.instructionalMethod = "IP"
+		return false
+	case "od":
+		class.instructionalMethod = "FO"
+		return false
+	case "hy":
+		class.instructionalMethod = "HY"
+		return false
 	}
 
-	// crn
+	// class id/crn
 	if _, err := strconv.Atoi(line); err == nil {
 		if len(line) == 5 {
 			// ok its a crn
-			class.crn = line
+			class.classID = line
 
 			return false
 		}
 	}
 
-	// check if online
-	if strings.Contains(line, "online") {
-		class.online = true
-		return false
+	// availability
+	if strings.TrimSpace(globalOpenVar) == "open" || strings.TrimSpace(globalOpenVar) == "closed" || strings.TrimSpace(globalOpenVar) == "waitlisted" {
+		class.availability = strings.TrimSpace(globalOpenVar)
+		globalOpenVar = ""
+	}
+
+	// course name
+	if strings.TrimSpace(class.courseName) == "" {
+		class.courseName = courseName
 	}
 
 	// DATES RANGE contain / - /
@@ -322,7 +331,7 @@ func analyzeLine(line string, courseName string, class *Class) bool {
 		return false
 	}
 
-	if isLetter(rawLine) && len(line) > 3 && !strings.Contains(line, "assignment") && !strings.Contains(line, "arranged") && !strings.Contains(line, "lecture") && !strings.Contains(line, "lab") {
+	if isLetter(rawLine) && len(line) > 3 && !strings.Contains(line, "assignment") && !strings.Contains(line, "arranged") && !strings.Contains(line, "lecture") && !strings.Contains(line, "lab") && !strings.Contains(line, "online") {
 		count := 0
 		for i := 0; i < len(line); i++ {
 			if line[i] != rawLine[i] {
@@ -355,10 +364,10 @@ func analyzeArray(classes []Class) {
 	for i := 0; i < len(classes); i++ {
 		fmt.Println("----------------------")
 		fmt.Println(classes[i].courseName)
-		fmt.Println(classes[i].crn)
+		fmt.Println(classes[i].classID)
 		fmt.Println(classes[i].instructor)
-		fmt.Println(classes[i].online)
-		fmt.Println(classes[i].open)
+		fmt.Println(classes[i].instructionalMethod)
+		fmt.Println(classes[i].availability)
 		fmt.Println(classes[i].date.startMonth)
 		fmt.Println(classes[i].date.startDay)
 		fmt.Println(classes[i].date.endMonth)
@@ -416,15 +425,15 @@ func saveToMongo(classes []Class) {
 				meetingTimeExport[x].EndTime.Minute = classes[i].meetingTimes[x].endTime.minute
 			}
 
-			newClass := ClassExport{classes[i].courseName, classes[i].crn, classes[i].instructor,
-				classes[i].instructorRating, classes[i].open, classes[i].online, meetingTimeExport, DateRangeExport{classes[i].date.startMonth, classes[i].date.startDay, classes[i].date.endMonth, classes[i].date.endDay}}
+			newClass := ClassExport{classes[i].courseName, classes[i].classID, classes[i].instructor,
+				classes[i].availability, classes[i].instructionalMethod, meetingTimeExport, DateRangeExport{classes[i].date.startMonth, classes[i].date.startDay, classes[i].date.endMonth, classes[i].date.endDay}}
 			_, err := collection.InsertOne(context.TODO(), newClass)
 			if err != nil {
 				fmt.Println(err)
 			}
 		} else { // no meeting times
-			newClass := ClassExport{classes[i].courseName, classes[i].crn, classes[i].instructor,
-				classes[i].instructorRating, classes[i].open, classes[i].online, nil, DateRangeExport{classes[i].date.startMonth, classes[i].date.startDay, classes[i].date.endMonth, classes[i].date.endDay}}
+			newClass := ClassExport{classes[i].courseName, classes[i].classID, classes[i].instructor,
+				classes[i].availability, classes[i].instructionalMethod, nil, DateRangeExport{classes[i].date.startMonth, classes[i].date.startDay, classes[i].date.endMonth, classes[i].date.endDay}}
 			_, err := collection.InsertOne(context.TODO(), newClass)
 			if err != nil {
 				fmt.Println(err)
