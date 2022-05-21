@@ -37,18 +37,24 @@ type PageResult struct {
 }
 
 type ProfessorType struct {
-	Department      string
-	SchoolID        string
-	InstitutionName string
-	FirstName       string
-	MiddleName      string
-	LastName        string
-	id              int
-	TotalRatings    int
-	RatingsClass    string
-	ContentType     string
-	CategoryType    string
-	OverallRating   string
+	Department      string `json:"department"`
+	SchoolID        string `json:"schoolId"`
+	InstitutionName string `json:"institutionName"`
+	FirstName       string `json:"firstName"`
+	MiddleName      string `json:"middleName"`
+	LastName        string `json:"lastName"`
+	id              int    `json:"id"`
+	TotalRatings    int    `json:"totalRatings"`
+	RatingsClass    string `json:"ratingsClass"`
+	ContentType     string `json:"contentType"`
+	CategoryType    string `json:"categoryType"`
+	OverallRating   string `json:"overallRating"`
+}
+
+type ProfessorExport struct {
+	Timestamp  int64           `json:"timestamp"`
+	School     string          `json:"schoolId"`
+	Professors []ProfessorType `json:"professors"`
 }
 
 func handle(err error) {

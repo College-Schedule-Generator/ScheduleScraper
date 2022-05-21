@@ -1,8 +1,12 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"github.com/Legitzx/ScheduleScraper/db"
+	"strconv"
 	"strings"
+	"time"
 
 	rmp "github.com/Legitzx/ScheduleScraper/rate-my-professor"
 	"github.com/Legitzx/ScheduleScraper/schools/pcc"
@@ -17,7 +21,7 @@ func main() {
 	arg.MustParse(&args)
 
 	if args.RunRMP {
-		fmt.Println("Scraping Rate My Professor")
+		fmt.Println("Scraping and Inserting Rate My Professor data into database")
 
 		pasadenaCityCollege := 2649
 		elCaminoCollege := 1403
@@ -25,10 +29,19 @@ func main() {
 			fmt.Printf("Running for school %d\n", id)
 			professors := rmp.ScrapeRateMyProfessor(id)
 
-			for _, professor := range professors {
-				fmt.Printf("Professor: %s %s %s (%s)\n", professor.FirstName, professor.MiddleName, professor.LastName, professor.OverallRating)
+			collection, err := db.GetDBCollection("Professors")
+			if err != nil {
+				fmt.Println(err)
+				return
 			}
-			fmt.Printf("Total: %d\n", len(professors))
+
+			professorExport := rmp.ProfessorExport{Timestamp: time.Now().Unix(), School: strconv.Itoa(id), Professors: professors}
+
+			_, err = collection.InsertOne(context.TODO(), professorExport)
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
 		}
 	}
 

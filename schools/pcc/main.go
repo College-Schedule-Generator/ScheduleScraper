@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/Legitzx/ScheduleScraper/db"
 	"github.com/PuerkitoBio/goquery"
@@ -81,6 +82,12 @@ type ClassExport struct {
 	InstructionalMethod string              `json:"instructionalMethod"`
 	MeetingTimes        []MeetingTimeExport `json:"meetingTimes"`
 	Date                DateRangeExport     `json:"date"`
+}
+
+type SchoolExport struct {
+	Timestamp int64         `json:"timestamp"`
+	School    string        `json:"school"`
+	Classes   []ClassExport `json:"classes"`
 }
 
 var globalMeetingIndex int = 0
@@ -389,7 +396,8 @@ func analyzeArray(classes []Class) {
 }
 
 func saveToMongo(classes []Class) {
-	collection, err := db.GetDBCollection()
+	collection, err := db.GetDBCollection("Classes")
+	var classExportArr []ClassExport
 
 	if err != nil {
 		fmt.Println(err)
@@ -427,19 +435,16 @@ func saveToMongo(classes []Class) {
 
 			newClass := ClassExport{classes[i].courseName, classes[i].classID, classes[i].instructor,
 				classes[i].availability, classes[i].instructionalMethod, meetingTimeExport, DateRangeExport{classes[i].date.startMonth, classes[i].date.startDay, classes[i].date.endMonth, classes[i].date.endDay}}
-			_, err := collection.InsertOne(context.TODO(), newClass)
-			if err != nil {
-				fmt.Println(err)
-			}
+			classExportArr = append(classExportArr, newClass)
 		} else { // no meeting times
 			newClass := ClassExport{classes[i].courseName, classes[i].classID, classes[i].instructor,
 				classes[i].availability, classes[i].instructionalMethod, nil, DateRangeExport{classes[i].date.startMonth, classes[i].date.startDay, classes[i].date.endMonth, classes[i].date.endDay}}
-			_, err := collection.InsertOne(context.TODO(), newClass)
-			if err != nil {
-				fmt.Println(err)
-			}
+			classExportArr = append(classExportArr, newClass)
 		}
 	}
+
+	schoolExport := SchoolExport{time.Now().Unix(), "2649", classExportArr}
+	collection.InsertOne(context.TODO(), schoolExport)
 }
 
 /* TODO
